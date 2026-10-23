@@ -599,28 +599,30 @@ Respond ONLY with the JSON array, no additional text.`
       reasoning?: string
     }
 
-    const allChallenges: Challenge[] = []
+    const isChallengeType = (value: unknown): value is ChallengeType =>
+      (ALL_CHALLENGE_TYPES as readonly unknown[]).includes(value)
 
-    responses.forEach((response) => {
+    const allChallenges: Challenge[] = responses.toArray().flatMap((response) => {
       const parsed = Try(() => JSON.parse(extractJson(response.text)) as ParsedChallenge[]).fold(
         () => [] as ParsedChallenge[],
         (result) => (Array.isArray(result) ? result : []),
       )
 
-      parsed.forEach((p) => {
-        const challengeType = p.challengeType as ChallengeType | undefined
-        if (challengeType && ALL_CHALLENGE_TYPES.includes(challengeType) && p.challenge && p.severity && p.reasoning) {
-          allChallenges.push({
-            model: response.model,
-            actualModel: response.actualModel,
-            challengeType,
-            challenge: p.challenge,
-            severity: p.severity as "minor" | "moderate" | "significant",
-            reasoning: p.reasoning,
-            latencyMs: response.latencyMs,
-          })
-        }
-      })
+      return parsed.flatMap((p): Challenge[] =>
+        isChallengeType(p.challengeType) && p.challenge && p.severity && p.reasoning
+          ? [
+              {
+                model: response.model,
+                actualModel: response.actualModel,
+                challengeType: p.challengeType,
+                challenge: p.challenge,
+                severity: p.severity as "minor" | "moderate" | "significant",
+                reasoning: p.reasoning,
+                latencyMs: response.latencyMs,
+              },
+            ]
+          : [],
+      )
     })
 
     // Build summary

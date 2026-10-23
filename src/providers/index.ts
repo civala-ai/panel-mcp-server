@@ -161,9 +161,10 @@ const getModelWithFallback = <T>(
   getModel: (provider: T) => LanguageModel,
   openRouterModelPath: string,
 ): Option<LanguageModel> => {
-  const direct = directProvider.map(getModel)
-  if (Option.isSome(direct)) return direct
-  return getOpenRouterProvider().map((or) => or(openRouterModelPath) as LanguageModel)
+  return directProvider.map(getModel).fold(
+    () => getOpenRouterProvider().map((or) => or(openRouterModelPath) as LanguageModel),
+    (model) => Option(model),
+  )
 }
 
 /**
