@@ -1,6 +1,6 @@
 {
   "name": "panel-mcp-server",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "MCP server providing LLM council workflow tools for multi-model queries, debates, and reviews",
   "keywords": [
     "mcp",
