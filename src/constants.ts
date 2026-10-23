@@ -7,6 +7,7 @@
 
 import { List, Option } from "functype"
 
+import packageJson from "../package.json" with { type: "json" }
 import { FALLBACK_FREE_MODELS, getFreeModels } from "./providers/openrouter-models.js"
 
 /**
@@ -61,7 +62,7 @@ export const DEFAULT_DEBATE_ROUNDS = 2
  * Server metadata
  */
 export const SERVER_NAME = "panel-mcp-server"
-export const SERVER_VERSION = "1.0.0"
+export const SERVER_VERSION = packageJson.version as `${number}.${number}.${number}`
 
 /**
  * Provider prefixes for model resolution

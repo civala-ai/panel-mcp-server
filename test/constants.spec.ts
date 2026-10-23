@@ -12,6 +12,7 @@ import {
   getMaxConcurrent,
   getRequestTimeout,
 } from "../src/constants"
+import packageJson from "../package.json" with { type: "json" }
 
 describe("constants", () => {
   describe("default values", () => {
@@ -29,7 +30,7 @@ describe("constants", () => {
 
     it("should have server metadata", () => {
       expect(SERVER_NAME).toBe("panel-mcp-server")
-      expect(SERVER_VERSION).toBe("1.0.0")
+      expect(SERVER_VERSION).toBe(packageJson.version)
     })
   })
 

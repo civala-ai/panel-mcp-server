@@ -137,3 +137,5 @@ dist
 
 # ts-builds tooling artifacts (lint reports, caches)
 .ts-builds/
+# vitest 5 reporter output
+.vitest/

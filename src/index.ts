@@ -8,8 +8,8 @@
  */
 
 import { program } from "commander"
-import { FastMCP } from "fastmcp"
 import { List, Option, Try } from "functype"
+import { createServer } from "somamcp"
 import { z } from "zod"
 
 import {
@@ -46,7 +46,7 @@ import {
 } from "./types.js"
 
 // Create the MCP server
-const server = new FastMCP({
+const server = createServer({
   name: SERVER_NAME,
   version: SERVER_VERSION,
 })
