@@ -48,7 +48,7 @@ src/
 
 ### Key Dependencies
 
-- **somamcp**: MCP server framework (tool registration, transports, built-in `info` tool and `/health` endpoint)
+- **somamcp**: MCP server framework (tool registration, transports, built-in `info` tool and `/health` endpoint). Import from `somamcp/node`, the entry that can listen on a port or stdio. It runs on the official MCP SDK 2.x: stateless, and serves both `2026-07-28` and 2025-era clients
 - **ai** (Vercel AI SDK): Unified interface for LLM providers
 - **@ai-sdk/\***: Direct provider SDKs (OpenAI, Anthropic, Google, Mistral)
 - **@openrouter/ai-sdk-provider**: OpenRouter for 300+ models

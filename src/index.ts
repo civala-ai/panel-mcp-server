@@ -9,7 +9,7 @@
 
 import { program } from "commander"
 import { List, Option, Try } from "functype"
-import { createServer } from "somamcp"
+import { createServer } from "somamcp/node"
 import { z } from "zod"
 
 import {
