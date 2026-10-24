@@ -197,7 +197,8 @@ export const getDefaultChallengerModelsAsync = (): Promise<List<string>> => getD
  * - auto: a prefixed model (e.g. "anthropic/...") uses its direct API when the
  *   key is set, and falls back to OpenRouter when it is not.
  * - strict: no fallback. A prefixed model is served by its own provider or the
- *   call fails, so a missing key can never quietly send prompts through OpenRouter.
+ *   call fails, and a model with no known prefix is rejected rather than sent to
+ *   OpenRouter. Prompts reach OpenRouter only through an explicit "openrouter/".
  *
  * "openrouter/..." always goes through OpenRouter, and "azure/..." never does,
  * in either mode.

@@ -143,14 +143,23 @@ const parseModelString = (modelString: string): Either<string, ParsedModel> => {
       model: modelString.slice(prefix.length),
     }))
     .map((parsed): Either<string, ParsedModel> => Right(parsed))
-    .orElse(
-      // Default to openrouter if no prefix and openrouter is configured
-      isProviderConfigured("openrouter")
-        ? Right({ provider: "openrouter" as ProviderType, model: modelString })
-        : Left(
-            `Cannot determine provider for model: ${modelString}. Use a provider prefix (e.g., openai/gpt-5.6-sol).`,
-          ),
+    .orElse(parseUnprefixedModel(modelString))
+}
+
+/**
+ * A model with no known prefix goes to OpenRouter in auto mode. Strict mode
+ * refuses it, so a typo such as "antropic/..." cannot quietly reach OpenRouter.
+ */
+const parseUnprefixedModel = (modelString: string): Either<string, ParsedModel> => {
+  if (getRoutingMode() === "strict") {
+    return Left(
+      `Cannot determine provider for model: ${modelString}. PANEL_ROUTING=strict needs a provider prefix; ` +
+        "use openrouter/ to send a model through OpenRouter.",
     )
+  }
+  return isProviderConfigured("openrouter")
+    ? Right({ provider: "openrouter" as ProviderType, model: modelString })
+    : Left(`Cannot determine provider for model: ${modelString}. Use a provider prefix (e.g., openai/gpt-5.6-sol).`)
 }
 
 /**
@@ -257,7 +266,8 @@ export const resolveModel = (modelString: string): Either<string, ResolvedModel>
  * Query a single model with rate limiting
  */
 export const queryModel = async (modelString: string, prompt: string, systemPrompt?: string): Promise<QueryResult> => {
-  const startTime = Date.now()
+  // performance.now() rather than Date.now(): a wall-clock correction mid-call can't skew the timings
+  const startTime = performance.now()
 
   const modelResult = resolveModel(modelString)
 
@@ -280,7 +290,7 @@ export const queryModel = async (modelString: string, prompt: string, systemProm
     async () =>
       withRateLimit(async () => {
         // Taken inside the permit, so queue wait and the provider call are timed separately
-        const callStart = Date.now()
+        const callStart = performance.now()
         const response = await generateText({
           model: resolved.model,
           prompt,
@@ -292,6 +302,7 @@ export const queryModel = async (modelString: string, prompt: string, systemProm
       }),
     (error): ModelError => ({
       model: modelString,
+      servedBy: resolved.servedBy,
       error: error instanceof Error ? error.message : String(error),
     }),
   )
@@ -299,7 +310,8 @@ export const queryModel = async (modelString: string, prompt: string, systemProm
   return result.fold<QueryResult>(
     (error) => error,
     ({ response, callStart }) => {
-      const endTime = Date.now()
+      const queueMs = Math.round(callStart - startTime)
+      const modelMs = Math.round(performance.now() - callStart)
       // Extract actual model/provider from OpenRouter's metadata if available
       const openrouterMeta = response.providerMetadata?.openrouter as Record<string, unknown> | undefined
       const actualModel = (openrouterMeta?.model ?? openrouterMeta?.provider ?? openrouterMeta?.id) as
@@ -309,9 +321,9 @@ export const queryModel = async (modelString: string, prompt: string, systemProm
         servedBy: resolved.servedBy,
         ...(actualModel && { actualModel }),
         text: response.text,
-        latencyMs: endTime - startTime,
-        queueMs: callStart - startTime,
-        modelMs: endTime - callStart,
+        latencyMs: queueMs + modelMs,
+        queueMs,
+        modelMs,
       }
     },
   )

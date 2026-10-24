@@ -62,6 +62,7 @@ export type ModelResponse = {
  */
 export type ModelError = {
   readonly model: string
+  readonly servedBy?: ProviderType // Set when the provider call itself failed, so a failed fallback is visible
   readonly error: string
 }
 
@@ -99,7 +100,9 @@ export type CouncilQueryResult = {
 export type DebateRound = {
   readonly round: number
   readonly affirmative: string
+  readonly affirmativeServedBy: ProviderType
   readonly negative: string
+  readonly negativeServedBy: ProviderType
 }
 
 /**
@@ -133,6 +136,7 @@ export type CritiqueResult = {
   readonly critique: Critique
   readonly metadata: {
     readonly criticModel: string
+    readonly servedBy: ProviderType
     readonly latencyMs: number
   }
 }

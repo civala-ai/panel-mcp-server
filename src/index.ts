@@ -399,7 +399,9 @@ server.addTool({
         rounds: state.rounds.add({
           round,
           affirmative: affirmativeResult.text,
+          affirmativeServedBy: affirmativeResult.servedBy,
           negative: negativeResult.text,
+          negativeServedBy: negativeResult.servedBy,
         }),
         previousArguments: `${updatedArgs}\n\n${negativeArg}`,
       }
@@ -516,6 +518,7 @@ Respond ONLY with the JSON object, no additional text.`
       critique,
       metadata: {
         criticModel,
+        servedBy: result.servedBy,
         latencyMs: Date.now() - startTime,
       },
     }

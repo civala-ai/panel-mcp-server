@@ -44,9 +44,9 @@ The calling LLM can optionally include its own position when using panel tools v
    - `google/gemini-3.1-pro-preview` - calls Google API directly
    - `azure/gpt-6-astra` - calls your Azure OpenAI / Microsoft Foundry resource
 
-A direct-mode model whose key is missing falls back to OpenRouter. Set `PANEL_ROUTING=strict` to make it fail instead, so prompts never pass through OpenRouter by accident. `azure/` never falls back.
+A direct-mode model whose key is missing falls back to OpenRouter, and a model with no known prefix goes to OpenRouter. Set `PANEL_ROUTING=strict` to make both fail instead: a model then reaches OpenRouter only when it starts with `openrouter/`. `azure/` never falls back.
 
-Every response reports `servedBy`, the provider that actually answered. It also splits `latencyMs` into `queueMs` (waiting for a `PANEL_MAX_CONCURRENT` slot) and `modelMs` (the provider call, including retries). To compare routes, send the same model both ways in one `council_query`, for example `openrouter/anthropic/claude-sonnet-5` and `anthropic/claude-sonnet-5`.
+Every model answer reports `servedBy`, the provider that actually answered: `query_model` and `council_query` responses, `challenge` findings, `critique` metadata, and each `debate` round (`affirmativeServedBy`, `negativeServedBy`). An error from the provider call reports it too. `query_model` and `council_query` also split `latencyMs` into `queueMs` (waiting for a `PANEL_MAX_CONCURRENT` slot) and `modelMs` (the provider call, including retries). To compare routes, send the same model both ways in one `council_query`, for example `openrouter/anthropic/claude-sonnet-5` and `anthropic/claude-sonnet-5`.
 
 **Default Panel**: GPT-5.6 Sol + Claude Sonnet 5 + Gemini 3.1 Pro (preview)
 
@@ -76,7 +76,7 @@ export MISTRAL_API_KEY=...
 export PANEL_DEFAULT_MODELS=openai/gpt-5.6-sol,anthropic/claude-sonnet-5,google/gemini-3.1-pro-preview
 export PANEL_MAX_CONCURRENT=5
 export PANEL_REQUEST_TIMEOUT_MS=300000
-export PANEL_ROUTING=auto # or strict: no OpenRouter fallback for direct-mode models
+export PANEL_ROUTING=auto # or strict: OpenRouter only for openrouter/ models, no fallback
 ```
 
 ## Usage

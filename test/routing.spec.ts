@@ -1,6 +1,10 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest"
 
+import { generateText } from "ai"
+
+import { getMaxConcurrent } from "../src/constants"
 import { queryModel, resolveModel } from "../src/providers/index"
+import { getRateLimiter } from "../src/providers/rate-limiter"
 
 // Stand in for the network call so queryModel can be timed without a provider
 vi.mock("ai", () => ({
@@ -85,9 +89,15 @@ describe("model routing", () => {
       expect(servedBy("openrouter/anthropic/claude-sonnet-5")).toBe("openrouter")
     })
 
-    it("still sends unprefixed models through OpenRouter", () => {
-      expect(servedBy("some-model")).toBe("openrouter")
+    it("refuses unprefixed models, so a typo can't reach OpenRouter", () => {
+      const error = errorFor("antropic/claude-sonnet-5")
+      expect(error).toContain("PANEL_ROUTING=strict")
+      expect(error).toContain("openrouter/")
     })
+  })
+
+  it("sends unprefixed models through OpenRouter in auto mode", () => {
+    expect(servedBy("some-model")).toBe("openrouter")
   })
 
   it("never falls back for azure/, in either mode", () => {
@@ -97,16 +107,36 @@ describe("model routing", () => {
   })
 
   describe("queryModel", () => {
-    it("reports the serving provider and splits latency into queue and model time", async () => {
+    it("counts time waiting for a concurrency slot as queueMs, not modelMs", async () => {
       process.env.MISTRAL_API_KEY = "test-mistral-key"
-      const result = await queryModel("mistral/mistral-large", "hello")
+      vi.mocked(generateText).mockImplementationOnce(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => resolve({ text: "ok", providerMetadata: {} } as never), 60),
+          ) as never,
+      )
 
+      // Hold every slot so the call has to queue before it reaches the provider
+      const limiter = getRateLimiter()
+      const slots = Array.from({ length: getMaxConcurrent() })
+      await Promise.all(slots.map(() => limiter.acquire()))
+      const pending = queryModel("mistral/mistral-large", "hello")
+      await new Promise((resolve) => setTimeout(resolve, 60))
+      slots.forEach(() => limiter.release())
+
+      const result = await pending
       expect("text" in result).toBe(true)
       if (!("text" in result)) return
       expect(result.servedBy).toBe("mistral")
-      expect(result.queueMs).toBeGreaterThanOrEqual(0)
-      expect(result.modelMs).toBeGreaterThanOrEqual(0)
+      expect(result.queueMs).toBeGreaterThanOrEqual(50)
+      expect(result.modelMs).toBeGreaterThanOrEqual(50)
       expect(result.latencyMs).toBe(result.queueMs + result.modelMs)
+    })
+
+    it("reports the route on a failed provider call", async () => {
+      vi.mocked(generateText).mockRejectedValueOnce(new Error("model not found"))
+      const result = await queryModel("openai/gpt-5.6-sol", "hello")
+      expect(result).toMatchObject({ error: "model not found", servedBy: "openrouter" })
     })
 
     it("reports a fallback as served by OpenRouter", async () => {
