@@ -49,9 +49,12 @@ export type SearchModelsResult = {
  */
 export type ModelResponse = {
   readonly model: string
+  readonly servedBy: ProviderType // Provider that answered; "openrouter" for a prefixed model means it fell back
   readonly actualModel?: string // The actual model used (e.g., from OpenRouter's free router)
   readonly text: string
-  readonly latencyMs: number
+  readonly latencyMs: number // Total: queueMs + modelMs
+  readonly queueMs: number // Waiting for a PANEL_MAX_CONCURRENT slot
+  readonly modelMs: number // The provider call, including SDK retries
 }
 
 /**
@@ -59,6 +62,7 @@ export type ModelResponse = {
  */
 export type ModelError = {
   readonly model: string
+  readonly servedBy?: ProviderType // Set when the provider call itself failed, so a failed fallback is visible
   readonly error: string
 }
 
@@ -96,7 +100,9 @@ export type CouncilQueryResult = {
 export type DebateRound = {
   readonly round: number
   readonly affirmative: string
+  readonly affirmativeServedBy: ProviderType
   readonly negative: string
+  readonly negativeServedBy: ProviderType
 }
 
 /**
@@ -130,6 +136,7 @@ export type CritiqueResult = {
   readonly critique: Critique
   readonly metadata: {
     readonly criticModel: string
+    readonly servedBy: ProviderType
     readonly latencyMs: number
   }
 }
@@ -206,6 +213,7 @@ export type ChallengeType = "logical" | "factual" | "completeness" | "edge_cases
  */
 export type Challenge = {
   readonly model: string
+  readonly servedBy: ProviderType
   readonly actualModel?: string
   readonly challengeType: ChallengeType
   readonly challenge: string

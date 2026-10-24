@@ -17,6 +17,7 @@ import {
   DEFAULT_DEBATE_ROUNDS,
   getDefaultChallengerModelsAsync,
   getDefaultModelsAsync,
+  getRoutingMode,
   MAX_DEBATE_ROUNDS,
   SERVER_NAME,
   SERVER_VERSION,
@@ -170,6 +171,9 @@ server.addTool({
         ALL_PROVIDERS.toArray().map((provider) => [provider, { configured: isProviderConfigured(provider) }]),
       ),
       configuredCount: providers.size,
+      // auto: a prefixed model with no direct key falls back to OpenRouter.
+      // strict: it fails instead.
+      routing: getRoutingMode(),
       note: "Use search_models to find specific models on OpenRouter",
     }
     return Promise.resolve(JSON.stringify(result, null, 2))
@@ -395,7 +399,9 @@ server.addTool({
         rounds: state.rounds.add({
           round,
           affirmative: affirmativeResult.text,
+          affirmativeServedBy: affirmativeResult.servedBy,
           negative: negativeResult.text,
+          negativeServedBy: negativeResult.servedBy,
         }),
         previousArguments: `${updatedArgs}\n\n${negativeArg}`,
       }
@@ -512,6 +518,7 @@ Respond ONLY with the JSON object, no additional text.`
       critique,
       metadata: {
         criticModel,
+        servedBy: result.servedBy,
         latencyMs: Date.now() - startTime,
       },
     }
@@ -613,6 +620,7 @@ Respond ONLY with the JSON array, no additional text.`
           ? [
               {
                 model: response.model,
+                servedBy: response.servedBy,
                 actualModel: response.actualModel,
                 challengeType: p.challengeType,
                 challenge: p.challenge,

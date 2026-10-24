@@ -94,6 +94,7 @@ export const ENV_KEYS = {
   DEFAULT_MODELS: "PANEL_DEFAULT_MODELS",
   MAX_CONCURRENT: "PANEL_MAX_CONCURRENT",
   REQUEST_TIMEOUT: "PANEL_REQUEST_TIMEOUT_MS",
+  ROUTING: "PANEL_ROUTING",
 } as const
 
 /**
@@ -189,6 +190,37 @@ export const getDefaultChallengerModels = (): List<string> => getDefaultModels()
  * Uses the same models as council queries (respects PANEL_DEFAULT_MODELS).
  */
 export const getDefaultChallengerModelsAsync = (): Promise<List<string>> => getDefaultModelsAsync()
+
+/**
+ * Routing modes for provider-prefixed model strings (PANEL_ROUTING).
+ *
+ * - auto: a prefixed model (e.g. "anthropic/...") uses its direct API when the
+ *   key is set, and falls back to OpenRouter when it is not.
+ * - strict: no fallback. A prefixed model is served by its own provider or the
+ *   call fails, and a model with no known prefix is rejected rather than sent to
+ *   OpenRouter. Prompts reach OpenRouter only through an explicit "openrouter/".
+ *
+ * "openrouter/..." always goes through OpenRouter, and "azure/..." never does,
+ * in either mode.
+ */
+export const ROUTING_MODES = ["auto", "strict"] as const
+
+export type RoutingMode = (typeof ROUTING_MODES)[number]
+
+export const DEFAULT_ROUTING_MODE: RoutingMode = "auto"
+
+const isRoutingMode = (value: string): value is RoutingMode => (ROUTING_MODES as readonly string[]).includes(value)
+
+/**
+ * Get the routing mode from environment or use default.
+ * Unrecognised values fall back to the default rather than failing startup.
+ */
+export const getRoutingMode = (): RoutingMode => {
+  const value = Option(process.env[ENV_KEYS.ROUTING])
+    .map((v) => v.trim().toLowerCase())
+    .orElse("")
+  return isRoutingMode(value) ? value : DEFAULT_ROUTING_MODE
+}
 
 /**
  * All available challenge types for stress-testing

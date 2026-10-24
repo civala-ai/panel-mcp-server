@@ -61,13 +61,15 @@ src/
 Dual-mode provider support:
 
 1. **OpenRouter mode**: `openrouter/{provider}/{model}` - routes through OpenRouter
-2. **Direct mode**: `{provider}/{model}` - uses direct API if key configured, falls back to OpenRouter
+2. **Direct mode**: `{provider}/{model}` - uses direct API if key configured, falls back to OpenRouter unless `PANEL_ROUTING=strict`
 
 Model resolution logic in `src/providers/index.ts`:
 
 - Parse model string to determine provider
 - Try direct provider if API key configured
-- Fall back to OpenRouter if available
+- Fall back to OpenRouter if available, unless `PANEL_ROUTING=strict` (`azure/` never falls back)
+- A model with no known prefix goes to OpenRouter in auto mode; strict mode rejects it, so OpenRouter is reached only through an explicit `openrouter/` prefix
+- `resolveModel` returns the `servedBy` provider, so responses report the route actually taken rather than inferring it
 
 ### Functype Patterns
 
@@ -124,6 +126,7 @@ AZURE_BASE_URL=https://YOUR-RESOURCE.openai.azure.com/openai/v1/
 PANEL_DEFAULT_MODELS=openai/gpt-5.6-sol,anthropic/claude-sonnet-5,google/gemini-3.1-pro-preview
 PANEL_MAX_CONCURRENT=5
 PANEL_REQUEST_TIMEOUT_MS=300000
+PANEL_ROUTING=auto   # strict: no fallback, and OpenRouter only for openrouter/ models
 ```
 
 ## Testing
@@ -133,6 +136,7 @@ Tests are in `test/*.spec.ts`:
 - `constants.spec.ts` - Configuration and env var handling
 - `provider-config.spec.ts` - Provider configuration
 - `rate-limiter.spec.ts` - Semaphore rate limiting
+- `routing.spec.ts` - Direct vs OpenRouter routing, `PANEL_ROUTING`, and the latency split
 
 Run specific test:
 
