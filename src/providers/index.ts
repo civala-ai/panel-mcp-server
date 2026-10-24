@@ -16,7 +16,7 @@ import { generateText } from "ai"
 import type { Either } from "functype"
 import { Left, List, Match, Option, Right, tryCatchAsync } from "functype"
 
-import { ENV_KEYS, getRequestTimeout, PROVIDER_PREFIXES } from "../constants.js"
+import { ENV_KEYS, getRequestTimeout, getRoutingMode, PROVIDER_PREFIXES } from "../constants.js"
 import type { ModelError, ModelResponse, ProviderType, QueryResult } from "../types.js"
 import { isProviderConfigured } from "./config.js"
 import { withRateLimit } from "./rate-limiter.js"
@@ -154,55 +154,96 @@ const parseModelString = (modelString: string): Either<string, ParsedModel> => {
 }
 
 /**
- * Try to get model from direct provider, falling back to OpenRouter
+ * A resolved model and the provider that will serve it.
+ * servedBy differs from requested only when a direct call fell back to OpenRouter.
  */
-const getModelWithFallback = <T>(
-  directProvider: Option<T>,
-  getModel: (provider: T) => LanguageModel,
-  openRouterModelPath: string,
-): Option<LanguageModel> => {
-  return directProvider.map(getModel).fold(
-    () => getOpenRouterProvider().map((or) => or(openRouterModelPath) as LanguageModel),
-    (model) => Option(model),
-  )
+export type ResolvedModel = {
+  readonly model: LanguageModel
+  readonly requested: ProviderType
+  readonly servedBy: ProviderType
 }
 
 /**
- * Resolve a model string to a language model instance
+ * Try to get model from direct provider, falling back to OpenRouter unless
+ * PANEL_ROUTING=strict
  */
-export const resolveModel = (modelString: string): Either<string, LanguageModel> => {
+const getModelWithFallback = <T>(
+  requested: ProviderType,
+  directProvider: Option<T>,
+  getModel: (provider: T) => LanguageModel,
+  openRouterModelPath: string,
+): Option<ResolvedModel> =>
+  directProvider.fold(
+    () =>
+      getRoutingMode() === "strict"
+        ? Option.none<ResolvedModel>()
+        : getOpenRouterProvider().map((or): ResolvedModel => ({
+            model: or(openRouterModelPath) as LanguageModel,
+            requested,
+            servedBy: "openrouter",
+          })),
+    (provider) => Option<ResolvedModel>({ model: getModel(provider), requested, servedBy: requested }),
+  )
+
+/**
+ * Error for a direct provider with no key. In strict mode OpenRouter is not an
+ * option, so the message must not suggest it.
+ */
+const missingKeyError = (label: string, envKey: string): string =>
+  getRoutingMode() === "strict"
+    ? `${label} API key not configured. Set ${envKey} (PANEL_ROUTING=strict turns off the OpenRouter fallback).`
+    : `${label} API key not configured. Set ${envKey} or OPENROUTER_API_KEY.`
+
+/**
+ * Resolve a model string to a language model instance and its serving provider
+ */
+export const resolveModel = (modelString: string): Either<string, ResolvedModel> => {
   return parseModelString(modelString).flatMap(({ provider, model }) =>
     Match(provider)
       .case("openrouter", () =>
         getOpenRouterProvider()
-          .map((openrouter) => openrouter(model) as LanguageModel)
+          .map((openrouter): ResolvedModel => ({
+            model: openrouter(model) as LanguageModel,
+            requested: "openrouter",
+            servedBy: "openrouter",
+          }))
           .toEither("OpenRouter API key not configured. Set OPENROUTER_API_KEY environment variable."),
       )
       .case("openai", () =>
-        getModelWithFallback(getOpenAIProvider(), (openai) => openai(model), `openai/${model}`).toEither(
-          "OpenAI API key not configured. Set OPENAI_API_KEY or OPENROUTER_API_KEY.",
+        getModelWithFallback("openai", getOpenAIProvider(), (openai) => openai(model), `openai/${model}`).toEither(
+          missingKeyError("OpenAI", ENV_KEYS.OPENAI_API_KEY),
         ),
       )
       .case("anthropic", () =>
-        getModelWithFallback(getAnthropicProvider(), (anthropic) => anthropic(model), `anthropic/${model}`).toEither(
-          "Anthropic API key not configured. Set ANTHROPIC_API_KEY or OPENROUTER_API_KEY.",
-        ),
+        getModelWithFallback(
+          "anthropic",
+          getAnthropicProvider(),
+          (anthropic) => anthropic(model),
+          `anthropic/${model}`,
+        ).toEither(missingKeyError("Anthropic", ENV_KEYS.ANTHROPIC_API_KEY)),
       )
       .case("google", () =>
-        getModelWithFallback(getGoogleProvider(), (google) => google(model), `google/${model}`).toEither(
-          "Google API key not configured. Set GOOGLE_GENERATIVE_AI_API_KEY or OPENROUTER_API_KEY.",
+        getModelWithFallback("google", getGoogleProvider(), (google) => google(model), `google/${model}`).toEither(
+          missingKeyError("Google", ENV_KEYS.GOOGLE_API_KEY),
         ),
       )
       .case("mistral", () =>
-        getModelWithFallback(getMistralProvider(), (mistral) => mistral(model), `mistralai/${model}`).toEither(
-          "Mistral API key not configured. Set MISTRAL_API_KEY or OPENROUTER_API_KEY.",
-        ),
+        getModelWithFallback(
+          "mistral",
+          getMistralProvider(),
+          (mistral) => mistral(model),
+          `mistralai/${model}`,
+        ).toEither(missingKeyError("Mistral", ENV_KEYS.MISTRAL_API_KEY)),
       )
       // No OpenRouter fallback here on purpose. Asking for azure/ means "bill my
       // Azure resource"; silently rerouting would spend on a different account.
       .case("azure", () =>
         getAzureProvider()
-          .map((azure) => azure(model) as LanguageModel)
+          .map((azure): ResolvedModel => ({
+            model: azure(model) as LanguageModel,
+            requested: "azure",
+            servedBy: "azure",
+          }))
           .toEither(
             "Azure not configured. Set AZURE_API_KEY and AZURE_BASE_URL " +
               "(the resource URL ending in /openai/v1/). Note the model must be a deployment name.",
@@ -230,22 +271,25 @@ export const queryModel = async (modelString: string, prompt: string, systemProm
     }
   }
 
-  const model = modelResult.fold(
+  const resolved = modelResult.fold(
     () => null as never,
     (m) => m,
   )
 
   const result = await tryCatchAsync(
     async () =>
-      withRateLimit(async () =>
-        generateText({
-          model,
+      withRateLimit(async () => {
+        // Taken inside the permit, so queue wait and the provider call are timed separately
+        const callStart = Date.now()
+        const response = await generateText({
+          model: resolved.model,
           prompt,
           system: systemPrompt,
           maxRetries: 2,
           abortSignal: AbortSignal.timeout(getRequestTimeout()),
-        }),
-      ),
+        })
+        return { response, callStart }
+      }),
     (error): ModelError => ({
       model: modelString,
       error: error instanceof Error ? error.message : String(error),
@@ -254,16 +298,20 @@ export const queryModel = async (modelString: string, prompt: string, systemProm
 
   return result.fold<QueryResult>(
     (error) => error,
-    (response) => {
+    ({ response, callStart }) => {
+      const endTime = Date.now()
       // Extract actual model/provider from OpenRouter's metadata if available
       const openrouterMeta = response.providerMetadata?.openrouter as Record<string, unknown> | undefined
       const actualModel = (openrouterMeta?.model ?? openrouterMeta?.provider ?? openrouterMeta?.id) as
         string | undefined
       return {
         model: modelString,
+        servedBy: resolved.servedBy,
         ...(actualModel && { actualModel }),
         text: response.text,
-        latencyMs: Date.now() - startTime,
+        latencyMs: endTime - startTime,
+        queueMs: callStart - startTime,
+        modelMs: endTime - callStart,
       }
     },
   )

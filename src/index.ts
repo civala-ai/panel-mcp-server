@@ -17,6 +17,7 @@ import {
   DEFAULT_DEBATE_ROUNDS,
   getDefaultChallengerModelsAsync,
   getDefaultModelsAsync,
+  getRoutingMode,
   MAX_DEBATE_ROUNDS,
   SERVER_NAME,
   SERVER_VERSION,
@@ -170,6 +171,9 @@ server.addTool({
         ALL_PROVIDERS.toArray().map((provider) => [provider, { configured: isProviderConfigured(provider) }]),
       ),
       configuredCount: providers.size,
+      // auto: a prefixed model with no direct key falls back to OpenRouter.
+      // strict: it fails instead.
+      routing: getRoutingMode(),
       note: "Use search_models to find specific models on OpenRouter",
     }
     return Promise.resolve(JSON.stringify(result, null, 2))
@@ -613,6 +617,7 @@ Respond ONLY with the JSON array, no additional text.`
           ? [
               {
                 model: response.model,
+                servedBy: response.servedBy,
                 actualModel: response.actualModel,
                 challengeType: p.challengeType,
                 challenge: p.challenge,

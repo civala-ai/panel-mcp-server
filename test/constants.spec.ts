@@ -11,6 +11,7 @@ import {
   getDefaultModelsAsync,
   getMaxConcurrent,
   getRequestTimeout,
+  getRoutingMode,
 } from "../src/constants"
 import packageJson from "../package.json" with { type: "json" }
 
@@ -126,6 +127,33 @@ describe("constants", () => {
     it("should parse from environment", () => {
       process.env.PANEL_REQUEST_TIMEOUT_MS = "30000"
       expect(getRequestTimeout()).toBe(30000)
+    })
+  })
+
+  describe("getRoutingMode", () => {
+    const originalEnv = process.env
+
+    beforeEach(() => {
+      process.env = { ...originalEnv }
+    })
+
+    afterEach(() => {
+      process.env = originalEnv
+    })
+
+    it("should default to auto when env not set", () => {
+      delete process.env.PANEL_ROUTING
+      expect(getRoutingMode()).toBe("auto")
+    })
+
+    it("should parse strict, ignoring case and whitespace", () => {
+      process.env.PANEL_ROUTING = " Strict "
+      expect(getRoutingMode()).toBe("strict")
+    })
+
+    it("should fall back to auto for unrecognised values", () => {
+      process.env.PANEL_ROUTING = "direct-only"
+      expect(getRoutingMode()).toBe("auto")
     })
   })
 })
