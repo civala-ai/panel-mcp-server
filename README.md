@@ -214,7 +214,7 @@ pnpm test
 
 ## Built With
 
-- [FastMCP](https://github.com/punkpeye/fastmcp) - MCP server framework
+- [SomaMCP](https://github.com/sapientsai/SomaMCP) - MCP server framework
 - [Vercel AI SDK](https://sdk.vercel.ai/) - LLM provider integrations
 - [functype](https://github.com/jordanburke/functype) - Functional programming patterns
 - [ts-builds](https://github.com/jordanburke/ts-builds) - TypeScript build tooling

@@ -48,7 +48,7 @@ src/
 
 ### Key Dependencies
 
-- **fastmcp**: MCP server framework for tool definitions
+- **somamcp**: MCP server framework (tool registration, transports, built-in `info` tool and `/health` endpoint)
 - **ai** (Vercel AI SDK): Unified interface for LLM providers
 - **@ai-sdk/\***: Direct provider SDKs (OpenAI, Anthropic, Google, Mistral)
 - **@openrouter/ai-sdk-provider**: OpenRouter for 300+ models
