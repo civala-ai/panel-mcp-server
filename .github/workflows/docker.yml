@@ -6,6 +6,8 @@ on:
     tags: ["v*"]
   pull_request:
     branches: ["main"]
+  # Manual rebuild, e.g. on a fork whose main matches upstream and so gets no push
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
