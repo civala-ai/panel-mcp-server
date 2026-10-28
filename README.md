@@ -77,7 +77,7 @@ export PANEL_DEFAULT_MODELS=openai/gpt-5.6-sol,anthropic/claude-sonnet-5,google/
 export PANEL_MAX_CONCURRENT=5
 export PANEL_REQUEST_TIMEOUT_MS=300000
 export PANEL_ROUTING=auto # or strict: OpenRouter only for openrouter/ models, no fallback
-export PANEL_KEEPALIVE_MS=5000 # HTTP keepalive frame interval; 0 = off
+export PANEL_KEEPALIVE_MS=5000 # HTTP keepalive frame interval, min 1000; 0 = don't force SSE
 ```
 
 ## Usage

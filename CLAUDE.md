@@ -127,7 +127,8 @@ PANEL_DEFAULT_MODELS=openai/gpt-5.6-sol,anthropic/claude-sonnet-5,google/gemini-
 PANEL_MAX_CONCURRENT=5
 PANEL_REQUEST_TIMEOUT_MS=300000
 PANEL_ROUTING=auto   # strict: no fallback, and OpenRouter only for openrouter/ models
-PANEL_KEEPALIVE_MS=5000  # HTTP only: answer tool calls as SSE with a frame every 5 s; 0 = off
+PANEL_KEEPALIVE_MS=5000  # HTTP only: answer 2026-07-28 requests as SSE with a frame every 5 s (min 1000).
+                         # 0 stops forcing SSE; responses that stream anyway keep the MCP SDK's 15 s frames
 ```
 
 ## Testing

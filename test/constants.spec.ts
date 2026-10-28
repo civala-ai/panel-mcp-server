@@ -157,11 +157,16 @@ describe("constants", () => {
       expect(getKeepaliveMs()).toBe(0)
     })
 
-    it("should fall back to the default for negative or unparseable values", () => {
-      process.env.PANEL_KEEPALIVE_MS = "-1"
-      expect(getKeepaliveMs()).toBe(5000)
-      process.env.PANEL_KEEPALIVE_MS = "soon"
-      expect(getKeepaliveMs()).toBe(5000)
+    it("should fall back to the default for negative, too-short or unparseable values", () => {
+      for (const value of ["-1", "1", "999", "soon"]) {
+        process.env.PANEL_KEEPALIVE_MS = value
+        expect(getKeepaliveMs()).toBe(5000)
+      }
+    })
+
+    it("should accept the minimum interval", () => {
+      process.env.PANEL_KEEPALIVE_MS = "1000"
+      expect(getKeepaliveMs()).toBe(1000)
     })
   })
 

@@ -195,22 +195,29 @@ export const getDefaultChallengerModelsAsync = (): Promise<List<string>> => getD
 /**
  * Default gap between keepalive frames on an HTTP tool call (5 seconds).
  *
- * With keepalive on, every HTTP tool call is answered as an SSE stream: headers go out at
- * once and a comment frame follows each interval until the result is ready. Without it the
- * reply carries no bytes until the tool finishes, and a proxy that waits for headers cuts
- * long calls. agentgateway gives each MCP target 10 seconds for headers unless the target
- * sets a timeout, so the interval must stay well under that.
+ * With keepalive on, every 2026-07-28 HTTP request is answered as an SSE stream, tool calls
+ * included: headers go out at once and a comment frame follows each interval until the
+ * result is ready. Without it a tool call's reply carries no bytes until the tool finishes,
+ * and a proxy that waits for headers cuts long calls. agentgateway gives each MCP target
+ * 10 seconds for headers unless the target sets a timeout, so the interval must stay well
+ * under that.
  */
 export const DEFAULT_KEEPALIVE_MS = 5_000
 
 /**
+ * Shortest accepted keepalive interval. Anything shorter floods every open stream with frames.
+ */
+export const MIN_KEEPALIVE_MS = 1_000
+
+/**
  * Get the keepalive interval from environment or use default.
- * 0 turns keepalive off; negative or unparseable values fall back to the default.
+ * 0 stops forcing SSE. A value under MIN_KEEPALIVE_MS, negative or unparseable, falls back
+ * to the default.
  */
 export const getKeepaliveMs = (): number =>
   Option(process.env[ENV_KEYS.KEEPALIVE])
     .map((v) => parseInt(v, 10))
-    .filter((n) => !isNaN(n) && n >= 0)
+    .filter((n) => n === 0 || n >= MIN_KEEPALIVE_MS)
     .orElse(DEFAULT_KEEPALIVE_MS)
 
 /**
