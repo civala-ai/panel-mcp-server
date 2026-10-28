@@ -17,6 +17,7 @@ import {
   DEFAULT_DEBATE_ROUNDS,
   getDefaultChallengerModelsAsync,
   getDefaultModelsAsync,
+  getKeepaliveMs,
   getRoutingMode,
   MAX_DEBATE_ROUNDS,
   SERVER_NAME,
@@ -47,9 +48,14 @@ import {
 } from "./types.js"
 
 // Create the MCP server
+const keepaliveMs = getKeepaliveMs()
+
 const server = createServer({
   name: SERVER_NAME,
   version: SERVER_VERSION,
+  // Panel calls run for minutes. Keepalive sends headers at once and a frame each interval,
+  // so proxies that wait for headers or watch for idle streams don't cut them.
+  streamKeepalive: { enabled: keepaliveMs > 0, intervalMs: keepaliveMs },
 })
 
 // ============================================================================

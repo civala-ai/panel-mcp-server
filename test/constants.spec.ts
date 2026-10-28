@@ -10,6 +10,7 @@ import {
   getDefaultModels,
   getDefaultModelsAsync,
   getMaxConcurrent,
+  getKeepaliveMs,
   getRequestTimeout,
   getRoutingMode,
 } from "../src/constants"
@@ -127,6 +128,40 @@ describe("constants", () => {
     it("should parse from environment", () => {
       process.env.PANEL_REQUEST_TIMEOUT_MS = "30000"
       expect(getRequestTimeout()).toBe(30000)
+    })
+  })
+
+  describe("getKeepaliveMs", () => {
+    const originalEnv = process.env
+
+    beforeEach(() => {
+      process.env = { ...originalEnv }
+    })
+
+    afterEach(() => {
+      process.env = originalEnv
+    })
+
+    it("should default to 5 seconds, under agentgateway's 10-second header deadline", () => {
+      delete process.env.PANEL_KEEPALIVE_MS
+      expect(getKeepaliveMs()).toBe(5000)
+    })
+
+    it("should parse from environment", () => {
+      process.env.PANEL_KEEPALIVE_MS = "3000"
+      expect(getKeepaliveMs()).toBe(3000)
+    })
+
+    it("should accept 0 to turn keepalive off", () => {
+      process.env.PANEL_KEEPALIVE_MS = "0"
+      expect(getKeepaliveMs()).toBe(0)
+    })
+
+    it("should fall back to the default for negative or unparseable values", () => {
+      process.env.PANEL_KEEPALIVE_MS = "-1"
+      expect(getKeepaliveMs()).toBe(5000)
+      process.env.PANEL_KEEPALIVE_MS = "soon"
+      expect(getKeepaliveMs()).toBe(5000)
     })
   })
 
