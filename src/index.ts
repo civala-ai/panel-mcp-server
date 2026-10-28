@@ -259,7 +259,7 @@ server.addTool({
 server.addTool({
   name: "council_query",
   description:
-    "Query multiple LLM models in parallel. Returns all responses for the calling LLM to synthesize, compare, or find consensus. Use when you want diverse perspectives on a question.",
+    "Query multiple LLM models in parallel. Returns all responses for the calling LLM to compare, noting where they agree and where they disagree. Agreement between models from one vendor is weak evidence, so check which vendors answered before treating agreement as consensus. Use when you want diverse perspectives on a question.",
   parameters: z.object({
     prompt: z.string().describe("The prompt to send to all models"),
     models: z
