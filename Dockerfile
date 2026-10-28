@@ -38,6 +38,15 @@ COPY --from=builder /app/dist ./dist
 # Set environment defaults
 ENV PORT=8080
 
+# Build identity, reported by the `info` tool so anyone can tell which code is serving.
+# CI passes these; a local build without them leaves the build block empty.
+ARG SOMAMCP_BUILD_COMMIT=""
+ARG SOMAMCP_BUILD_BRANCH=""
+ARG SOMAMCP_BUILD_DATE=""
+ENV SOMAMCP_BUILD_COMMIT=$SOMAMCP_BUILD_COMMIT \
+    SOMAMCP_BUILD_BRANCH=$SOMAMCP_BUILD_BRANCH \
+    SOMAMCP_BUILD_DATE=$SOMAMCP_BUILD_DATE
+
 EXPOSE 8080
 
 # Health check - use 127.0.0.1 instead of localhost to avoid IPv6 resolution issues
