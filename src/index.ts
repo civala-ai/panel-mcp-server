@@ -17,6 +17,7 @@ import {
   DEFAULT_DEBATE_ROUNDS,
   getDefaultChallengerModelsAsync,
   getDefaultModelsAsync,
+  getKeepaliveMs,
   getRoutingMode,
   MAX_DEBATE_ROUNDS,
   SERVER_NAME,
@@ -47,9 +48,15 @@ import {
 } from "./types.js"
 
 // Create the MCP server
+const keepaliveMs = getKeepaliveMs()
+
 const server = createServer({
   name: SERVER_NAME,
   version: SERVER_VERSION,
+  // Panel calls run for minutes. Keepalive answers HTTP requests as SSE, sending headers at
+  // once and a frame each interval, so proxies that wait for headers or watch for idle
+  // streams don't cut them.
+  streamKeepalive: { enabled: keepaliveMs > 0, intervalMs: keepaliveMs },
 })
 
 // ============================================================================
@@ -253,7 +260,7 @@ server.addTool({
 server.addTool({
   name: "council_query",
   description:
-    "Query multiple LLM models in parallel. Returns all responses for the calling LLM to synthesize, compare, or find consensus. Use when you want diverse perspectives on a question.",
+    "Query multiple LLM models in parallel. Returns all responses for the calling LLM to compare, noting where they agree and where they disagree. Agreement between models from one vendor is weak evidence, so check which vendors answered before treating agreement as consensus. Use when you want diverse perspectives on a question.",
   parameters: z.object({
     prompt: z.string().describe("The prompt to send to all models"),
     models: z

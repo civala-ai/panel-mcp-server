@@ -95,6 +95,7 @@ export const ENV_KEYS = {
   MAX_CONCURRENT: "PANEL_MAX_CONCURRENT",
   REQUEST_TIMEOUT: "PANEL_REQUEST_TIMEOUT_MS",
   ROUTING: "PANEL_ROUTING",
+  KEEPALIVE: "PANEL_KEEPALIVE_MS",
 } as const
 
 /**
@@ -190,6 +191,34 @@ export const getDefaultChallengerModels = (): List<string> => getDefaultModels()
  * Uses the same models as council queries (respects PANEL_DEFAULT_MODELS).
  */
 export const getDefaultChallengerModelsAsync = (): Promise<List<string>> => getDefaultModelsAsync()
+
+/**
+ * Default gap between keepalive frames on an HTTP tool call (5 seconds).
+ *
+ * With keepalive on, every 2026-07-28 HTTP request is answered as an SSE stream, tool calls
+ * included: headers go out at once and a comment frame follows each interval until the
+ * result is ready. Without it a tool call's reply carries no bytes until the tool finishes,
+ * and a proxy that waits for headers cuts long calls. agentgateway gives each MCP target
+ * 10 seconds for headers unless the target sets a timeout, so the interval must stay well
+ * under that.
+ */
+export const DEFAULT_KEEPALIVE_MS = 5_000
+
+/**
+ * Shortest accepted keepalive interval. Anything shorter floods every open stream with frames.
+ */
+export const MIN_KEEPALIVE_MS = 1_000
+
+/**
+ * Get the keepalive interval from environment or use default.
+ * 0 stops forcing SSE. A value under MIN_KEEPALIVE_MS, negative or unparseable, falls back
+ * to the default.
+ */
+export const getKeepaliveMs = (): number =>
+  Option(process.env[ENV_KEYS.KEEPALIVE])
+    .map((v) => parseInt(v, 10))
+    .filter((n) => n === 0 || n >= MIN_KEEPALIVE_MS)
+    .orElse(DEFAULT_KEEPALIVE_MS)
 
 /**
  * Routing modes for provider-prefixed model strings (PANEL_ROUTING).

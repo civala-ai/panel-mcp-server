@@ -59,5 +59,9 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            SOMAMCP_BUILD_COMMIT=${{ github.sha }}
+            SOMAMCP_BUILD_BRANCH=${{ github.ref_name }}
+            SOMAMCP_BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
