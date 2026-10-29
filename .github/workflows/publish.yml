@@ -7,6 +7,9 @@ on:
 
 jobs:
   publish:
+    # Only the upstream repo publishes to npm. Forks such as civala-ai/panel-mcp-server push
+    # v* tags to build version-tagged images; they must not attempt an npm publish.
+    if: github.repository == 'sapientsai/panel-mcp-server'
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -155,3 +155,10 @@ npm publish --access public
 ```
 
 The `prepublishOnly` hook automatically runs `pnpm validate` before publishing.
+
+Pushing a `v*` tag also builds the Docker image tagged `X.Y.Z`, `X.Y` and `X`
+(`ghcr.io/sapientsai/panel-mcp-server`). Civala's fork, `civala-ai/panel-mcp-server`,
+builds its own image only from tags pushed to the fork, because `gh repo sync` moves
+branches, not tags. Its npm publish job is skipped (`publish.yml` runs only in
+`sapientsai/panel-mcp-server`), so pushing `vX.Y.Z` there just builds
+`ghcr.io/civala-ai/panel-mcp-server:X.Y.Z`.
