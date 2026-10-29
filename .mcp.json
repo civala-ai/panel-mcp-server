@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "panel": {
-      "command": "node",
-      "args": ["dist/index.js", "--stdio"],
+      "command": "envpkt",
+      "args": ["exec", "--skip-audit", "--", "node", "dist/index.js", "--stdio"],
       "env": {
         "OPENROUTER_API_KEY": "${OPENROUTER_API_KEY:-}",
         "OPENAI_API_KEY": "${OPENAI_API_KEY:-}",

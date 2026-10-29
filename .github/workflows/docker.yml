@@ -61,7 +61,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             SOMAMCP_BUILD_COMMIT=${{ github.sha }}
-            SOMAMCP_BUILD_BRANCH=${{ github.ref_name }}
+            SOMAMCP_BUILD_BRANCH=${{ github.ref_type == 'branch' && github.ref_name || '' }}
             SOMAMCP_BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
